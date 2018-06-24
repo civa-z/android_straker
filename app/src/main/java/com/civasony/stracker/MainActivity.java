@@ -4,6 +4,8 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -21,12 +23,16 @@ import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.nio.ByteBuffer;
@@ -56,22 +62,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mMainHandler = null;
     private STrackerConnector sTrackerConnector;
 
+    private Button ip_set_button = null;
+    private TextView ip_text = null;
+    private TextView result = null;
+    private String default_ip_address = "192.168.3.62";
+
     @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ip_set_button = findViewById(R.id.ip_set_button);
+        ip_set_button.setOnClickListener(new MyIpSetListener());
+
+        ip_text = findViewById(R.id.ip_text);
+        ip_text.setText(default_ip_address);
+        result = findViewById(R.id.result);
         initVIew();
 
         mMainHandler = new Handler(){
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
+                switch (msg.what){
+                    case -1:
+                        result.setText(msg.obj.toString());
+                        break;
+                    case 1:
+                        result.setText(msg.obj.toString());
+                       break;
+                }
+                mSurfaceView.setVisibility(View.VISIBLE);
+                iv_show.setVisibility(View.GONE);
             }
         };
 
         sTrackerConnector = new STrackerConnector(mMainHandler);
         sTrackerConnector.start();
+    }
+
+    private class MyIpSetListener implements View.OnClickListener{
+        @Override
+        public void onClick(View v) {
+            String new_ip = ip_text.getText().toString();
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null)
+                imm.hideSoftInputFromWindow(ip_text.getWindowToken(), 0) ;
+
+            sTrackerConnector.setIp(new_ip);
+        }
     }
 
     /**
@@ -121,18 +160,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() { //可以在这里处理拍照得到的临时照片 例如，写入本地
             @Override
             public void onImageAvailable(ImageReader reader) {
-                mCameraDevice.close();
+                //mCameraDevice.close();
                 mSurfaceView.setVisibility(View.GONE);
                 iv_show.setVisibility(View.VISIBLE);
                 // 拿到拍照照片数据
+                int f = reader.getImageFormat();
                 Image image = reader.acquireNextImage();
+                int w =  image.getWidth();
+                int h = image.getHeight();
+                 f = image.getFormat();
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.remaining()];
-                buffer.get(bytes);//由缓冲区存入字节数组
+                buffer.get(bytes);//
 
+                Bitmap phote = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);;
+                iv_show.setImageBitmap(phote);
                 Message msg = new Message();
                 msg.what = 1;
-                msg.obj = ObjectAndByte.toObject(bytes);
+                msg.obj = bytes;
                 sTrackerConnector.postHandler.sendMessage(msg);
             }
         }, mainHandler);
@@ -148,6 +193,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             e.printStackTrace();
         }
     }
+
 
 
     /**
@@ -249,4 +295,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             e.printStackTrace();
         }
     }
+
+
 }

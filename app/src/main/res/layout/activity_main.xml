@@ -34,6 +34,14 @@
                 android:text="@string/set_ip_name" />
         </RelativeLayout>
 
+        <EditText
+            android:background="@drawable/boder"
+            android:id="@+id/result"
+            android:layout_width="120pt"
+            android:layout_height="20pt"
+            android:layout_margin="5px"
+            />
+
         <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
